@@ -239,6 +239,153 @@ function create_pubnet_config {
   ' >> /etc/stellar/stellar-core.cfg
 }
 
+function setup_bridge {
+  echo "Installing Stellar Bridge Server"
+  cd;
+
+  if [ -d /home/${USER}/stellar ] 
+  then
+    cd /home/${USER}/stellar
+  else
+    mkdir /home/${USER}/stellar
+    cd /home/${USER}/stellar
+  fi
+  
+  wget  -nv https://github.com/stellar/bridge-server/releases/download/$BRIDGE_VERSION/bridge-$BRIDGE_VERSION-linux-amd64.tar.gz
+  
+  tar -xvzf bridge-$BRIDGE_VERSION-linux-amd64.tar.gz
+  # Rename folder 
+  mv bridge-$BRIDGE_VERSION-linux-amd64 bridge-server
+
+  # clean up
+  rm -rf bridge-$BRIDGE_VERSION-linux-amd64.tar.gz
+
+  echo "Configuring Bridge Server..."
+  cd bridge-server
+
+  if [ "$STELLAR_NETWORK" == "testnet" ]
+  then
+    sudo echo 'network_passphrase="'${TESTNET_PASSPHRASE}'"' > bridge.cfg
+  else
+    sudo echo 'network_passphrase="'${PUBNET_PASSPHRASE}'"' > bridge.cfg
+  fi
+
+
+  echo '
+    # Bridge server bridge.cfg example
+    port = '${BRIDGE_PORT}'
+    horizon = "http://localhost:'${HORIZON_PORT}'"
+    compliance = "http://localhost:'${COMPLIANCE_PORT_INTERNAL}'"
+    api_key = ""
+    mac_key = ""
+
+    [[assets]]
+    code="'${ANCHOR_ASSET_CODE}'"
+    issuer="'${ISSUING_ACCOUNT}'"
+
+    #Listen for XLM Payments
+    [[assets]]
+    code="XLM"
+
+    [database]
+    type = "postgres"
+    url = "postgres://'${DB_USER}':'${DB_PASSWORD}'@/'${BRIDGE_DB_NAME}'?sslmode=disable"
+
+    [accounts]
+    base_seed = "'${BASE_SEED}'"
+    authorizing_seed = "'${AUTHORIZING_SEED}'"
+    receiving_account_id = "'${RECEIVING_ACCOUNT}'"
+
+    [callbacks]
+    receive = "http://localhost:8010/receive"
+    error = "http://localhost:8010/error"
+
+  ' >> bridge.cfg
+ 
+  # create bridge db
+  echo "Creating bridge server database ..."
+  sudo -u ${DB_USER} createdb ${BRIDGE_DB_NAME}
+
+  # initialise bridge db
+  echo "Initialising bridge server database ..."
+  ./bridge --migrate-db
+  
+  echo "Bridge server setup ... OK"
+}
+
+function setup_compliance {
+  echo "Installing Compliance Server"
+  cd
+  if [ -d /home/${USER}/stellar ] 
+  then
+    cd /home/${USER}/stellar
+  else
+    mkdir /home/${USER}/stellar
+    cd /home/${USER}/stellar
+  fi
+
+  wget  -nv https://github.com/stellar/bridge-server/releases/download/$BRIDGE_VERSION/compliance-$BRIDGE_VERSION-linux-amd64.tar.gz
+
+  tar -xvzf compliance-$BRIDGE_VERSION-linux-amd64.tar.gz
+  # Rename folder
+  mv compliance-$BRIDGE_VERSION-linux-amd64 compliance-server
+
+  # clean up
+  rm -rf compliance-$BRIDGE_VERSION-linux-amd64.tar.gz
+
+  echo "Configuring Compliance Server..."
+  cd compliance-server
+
+  if [ "$STELLAR_NETWORK" == "testnet" ]
+  then
+    sudo echo 'network_passphrase="'${TESTNET_PASSPHRASE}'"' > compliance.cfg
+  else
+    sudo echo 'network_passphrase="'${PUBNET_PASSPHRASE}'"' > compliance.cfg
+  fi
+
+
+  echo '
+    # Compliance server compliance.cfg example
+    external_port = '${COMPLIANCE_PORT_EXTERNAL}'
+    internal_port = '${COMPLIANCE_PORT_INTERNAL}'
+    needs_auth = false
+
+    [database]
+    type = "postgres"
+    url = "postgres://'${DB_USER}':'${DB_PASSWORD}'@/'${COMPLIANCE_DB_NAME}'?sslmode=disable"
+
+    [keys]
+    signing_seed = "'${SIGNING_SEED}'"
+    encryption_key = ""
+
+    [callbacks]
+    sanctions = "http://localhost:8010/sanctions"
+    ask_user = "http://localhost:8010/ask_user"
+    fetch_info = "http://localhost:8010/fetch_info"
+    tx_status = "http://localhost:8010/tx_status"
+
+    [tls]
+    certificate_file = "server.crt"
+    private_key_file = "server.key"
+
+    [tx_status_auth]
+    username = "username"
+    password = "password"
+  ' >> compliance.cfg
+  
+   # create compliance db
+  echo "Creating compliance server database ..."
+  sudo -u ${DB_USER} createdb ${COMPLIANCE_DB_NAME}
+
+  # initialise compliance db
+  echo "Initialising compliance server database ..."
+  ./compliance --migrate-db
+
+  echo "Compliance server setup ... OK"
+
+
+}
+
 
 echo "Start Stellar Deploy"
 
