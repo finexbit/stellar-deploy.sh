@@ -594,6 +594,33 @@ function setup_ssl {
 
 }
 
+function setup_mock_callback {
+  echo "Setting up mock callbacks"
+  cd
+  curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.33.11/install.sh | bash
+  source ~/.bashrc
+  nvm install --lts
+  nvm use node
+  npm install -g pm2
+
+  if [ -d /home/${USER}/stellar ] 
+  then
+    cd /home/${USER}/stellar
+  else
+    mkdir /home/${USER}/stellar
+    cd /home/${USER}/stellar
+  fi
+
+  git clone https://github.com/poliha/mock-bridge-callback.git
+  cd mock-bridge-callback
+  npm install -g pm2
+  npm install
+  pm2 start index.js --name "mock-callback"
+
+  echo "Mock callback server started on localhost:8010"
+  echo "To view mock callback server logs run:  pm2 logs mock-callback"
+}
+
 
 echo "Start Stellar Deploy"
 
