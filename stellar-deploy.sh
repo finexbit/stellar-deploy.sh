@@ -126,32 +126,35 @@ function setup_horizon {
   echo "Configuring....... "
   echo "Creating horizon config "
   
-  sudo echo "## ${HORIZON_CONFIG_FILE}" >> ${HORIZON_CONFIG_FILE}
+  echo "## ${HORIZON_CONFIG_FILE}" | sudo tee ${HORIZON_CONFIG_FILE}
+  
   if [ "$STELLAR_NETWORK" == "testnet" ]
   then
-    sudo echo 'NETWORK_PASSPHRASE="'${TESTNET_PASSPHRASE}'"' >> ${HORIZON_CONFIG_FILE}
+    echo 'NETWORK_PASSPHRASE="'${TESTNET_PASSPHRASE}'"' | sudo tee -a ${HORIZON_CONFIG_FILE}
   else
-    sudo echo 'NETWORK_PASSPHRASE="'${PUBNET_PASSPHRASE}'"' >> ${HORIZON_CONFIG_FILE}
+    sudo echo 'NETWORK_PASSPHRASE="'${PUBNET_PASSPHRASE}'"' | sudo tee -a ${HORIZON_CONFIG_FILE}
   fi
-  sudo echo "DATABASE_URL=\"dbname=$HORIZON_DB_NAME user=$DB_USER\" host=/var/run/postgresql" >> ${HORIZON_CONFIG_FILE}
 
-  sudo echo "STELLAR_CORE_DATABASE_URL=\"dbname=$HORIZON_DB_NAME user=$DB_USER\" host=/var/run/postgresql" >> ${HORIZON_CONFIG_FILE}
-
-  sudo echo '
-    STELLAR_CORE_URL="http://127.0.0.1:11626"
+  echo "DATABASE_URL=\"dbname=$HORIZON_DB_NAME user=$DB_USER host=/var/run/postgresql\"
+    STELLAR_CORE_DATABASE_URL=\"dbname=$CORE_DB_NAME user=$DB_USER host=/var/run/postgresql\"
+    STELLAR_CORE_URL=\"http://127.0.0.1:${CORE_PORT}\"
     FRIENDBOT_SECRET=
-    PORT='${HORIZON_PORT}'
+    PORT=${HORIZON_PORT}
     SENTRY_DSN=
     LOGGLY_TOKEN=
-    PER_HOUR_RATE_LIMIT='${HORIZON_RATE_LIMIT}'
+    PER_HOUR_RATE_LIMIT=${HORIZON_RATE_LIMIT}
     INGEST=true
     # ingestion is currently only supported on 1 Horizon instance
-  ' >> ${HORIZON_CONFIG_FILE}
+  " | sudo tee -a ${HORIZON_CONFIG_FILE}
 
   if [ "$CATCHUP_COMPLETE" == "true" ]
   then
-    sudo echo 'HISTORY_RETENTION_COUNT=0' >> ${HORIZON_CONFIG_FILE}  
+    echo 'HISTORY_RETENTION_COUNT=0' | sudo tee -a ${HORIZON_CONFIG_FILE}
   fi
+
+  # create stellar core db
+  echo "Creating horizon server database ..."
+  sudo -u ${DB_USER} createdb ${HORIZON_DB_NAME}
 
   echo "Initializing Horizon DB"
   stellar-horizon-cmd db init
