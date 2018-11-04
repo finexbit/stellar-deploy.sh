@@ -44,3 +44,36 @@ EOF
         exit 1
   fi
 }
+
+function setup_postgresql {
+  echo "Installing Postgresql ..."
+  sudo apt-get update
+  sudo apt-get install postgresql postgresql-contrib
+  echo "Create postgresql role ..."
+  sudo -u postgres psql -e<<-EOF 
+  
+  CREATE ROLE ${DB_USER} PASSWORD '${DB_PASSWORD}' CREATEDB CREATEROLE INHERIT LOGIN;
+EOF
+  sudo -u postgres createdb ${DB_USER} 
+  #create system user
+  sudo useradd ${DB_USER}
+}
+
+
+echo "Start Stellar Deploy"
+
+system_check
+# setup_postgresql
+# setup_stellar_core
+# setup_horizon
+# setup_bridge
+# setup_compliance
+# setup_federation
+# setup_supervisor
+# setup_apache
+# setup_stellar_toml
+# setup_ssl
+# setup_mock_callback
+# start_services
+
+echo "Stellay Deploy ... OK"
