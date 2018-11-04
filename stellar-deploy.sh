@@ -621,6 +621,13 @@ function setup_mock_callback {
   echo "To view mock callback server logs run:  pm2 logs mock-callback"
 }
 
+function start_services {
+  sudo systemctl start stellar-core
+  sudo systemctl start stellar-horizon
+  sudo systemctl start supervisorctl
+  sudo systemctl start apache2
+}
+
 
 echo "Start Stellar Deploy"
 
