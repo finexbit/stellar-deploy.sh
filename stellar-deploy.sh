@@ -579,6 +579,22 @@ function setup_stellar_toml {
 }
 
 
+function setup_ssl {
+
+  echo "Installing Letsencrypt SSL Cert ..."
+  # check in letsencrypt is installed, if not install
+  # 
+  sudo apt-get install software-properties-common
+  sudo add-apt-repository ppa:certbot/certbot
+  sudo apt-get update
+  sudo apt-get install python-certbot-apache 
+  sudo certbot --apache -d $DOMAIN_NAME --dry-run
+
+  echo "Letsencrypt ... OK"
+
+}
+
+
 echo "Start Stellar Deploy"
 
 system_check
