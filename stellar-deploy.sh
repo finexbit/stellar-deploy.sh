@@ -492,6 +492,93 @@ function setup_supervisor {
 }
 
 
+
+
+function setup_apache {
+
+  echo "Installing Apache Web server ..."
+
+  cd
+  sudo apt-get install apache2
+  sudo apache2ctl configtest
+  sudo ufw allow in  "Apache Full"
+  
+  echo "Configuring Apache Web server ..."
+
+  cd /etc/apache2/sites-available
+
+  echo ' 
+    <VirtualHost *:80>
+    ServerAdmin ${DOMAIN_ADMIN}
+    ServerName ${DOMAIN_NAME}
+    ServerAlias ${DOMAIN_NAME}
+    DocumentRoot /var/www/${DOMAIN_NAME}/public_html
+    ErrorLog ${APACHE_LOG_DIR}/error.log
+    CustomLog ${APACHE_LOG_DIR}/access.log combined
+
+    <Directory /var/www/${DOMAIN_NAME}/public_html/>
+    Options Indexes FollowSymLinks
+    AllowOverride All
+    Require all granted
+    </Directory>
+    <Location "/var/www/'${DOMAIN_NAME}'/public_html/.well-known/stellar.toml">
+    Header always set Access-Control-Allow-Origin "*"
+    </Location>
+
+    ProxyPreserveHost On
+
+    ProxyPass "/compliance" "http://localhost:'${COMPLIANCE_PORT_EXTERNAL}'"
+    ProxyPassReverse "/compliance" "http://localhost:'${COMPLIANCE_PORT_EXTERNAL}'"
+
+    ProxyPass "/federation" "http://localhost:'${FEDERATION_PORT}'/federation"
+    ProxyPassReverse "/federation" "http://localhost:'${FEDERATION_PORT}'/federation"
+
+    
+    RewriteEngine on
+    RewriteCond %{SERVER_NAME} ='${DOMAIN_NAME}'
+    RewriteRule ^ https://%{SERVER_NAME}%{REQUEST_URI} [END,NE,R=permanent]
+
+    </VirtualHost> 
+  ' | sudo tee $DOMAIN_NAME.conf;
+  sudo a2enmod proxy
+  sudo a2enmod proxy_http
+  sudo a2enmod rewrite
+  sudo a2enmod headers
+  sudo a2ensite $DOMAIN_NAME.conf
+
+  echo "Apache Web server ... OK"
+  
+
+}
+
+function setup_stellar_toml {
+
+  echo "Setting up Stellar.toml  ..."
+
+  cd /var/www
+  sudo mkdir -p $DOMAIN_NAME/public_html/.well-known && cd $DOMAIN_NAME/public_html/.well-known
+  echo '
+    FEDERATION_SERVER="https://'$DOMAIN_NAME'/federation"
+    
+    # The endpoint used for the compliance protocol
+    AUTH_SERVER="https://'$DOMAIN_NAME'/compliance"
+    
+    # The signing key is used for the compliance protocol
+    SIGNING_KEY="'$SIGNING_KEY'"
+    
+    [[CURRENCIES]]
+    code="'$ANCHOR_ASSET_CODE'"
+    issuer="'$ISSUING_ACCOUNT'"
+  ' | sudo tee stellar.toml
+  
+  echo 'Header always set Access-Control-Allow-Origin "*"' | sudo tee .htaccess 
+  sudo chown $USER:www-data stellar.toml
+
+  echo "stellar.toml ... OK"
+
+}
+
+
 echo "Start Stellar Deploy"
 
 system_check
