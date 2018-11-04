@@ -386,6 +386,64 @@ function setup_compliance {
 
 }
 
+function setup_federation {
+
+  echo "Installing Federation Server"
+  cd
+  if [ -d /home/${USER}/stellar ] 
+  then
+    cd /home/${USER}/stellar
+  else
+    mkdir /home/${USER}/stellar
+    cd /home/${USER}/stellar
+  fi
+
+  wget  -nv https://github.com/stellar/go/releases/download/federation-$FEDERATION_VERSION/federation-$FEDERATION_VERSION-linux-amd64.tar.gz
+  
+  tar -xvzf federation-$FEDERATION_VERSION-linux-amd64.tar.gz
+
+  # Rename folder
+  mv federation-$FEDERATION_VERSION-linux-amd64 federation-server
+
+  # clean up
+  rm -rf federation-$FEDERATION_VERSION-linux-amd64.tar.gz
+
+  echo "Configuring Federation Server..."
+  cd federation-server
+
+
+  # create federation db
+  echo "Creating federation server database ..."
+  sudo -u ${DB_USER} createdb ${FEDERATION_DB_NAME} 
+
+  # initialise federation db
+  echo "Initialising federation server database ..."
+
+  # Credit to: https://github.com/stellar/go/blob/master/services/federation/build_sample.sh
+  sudo -u ${DB_USER} psql ${FEDERATION_DB_NAME} -e <<-EOS 
+    CREATE TABLE people (id character varying, name character varying, domain character varying);
+    INSERT INTO people (id, name, domain) VALUES 
+      ('GD2GJPL3UOK5LX7TWXOACK2ZPWPFSLBNKL3GTGH6BLBNISK4BGWMFBBG', 'bob', 'stellar.org'),
+      ('GCYMGWPZ6NC2U7SO6SMXOP5ZLXOEC5SYPKITDMVEONLCHFSCCQR2J4S3', 'alice', 'stellar.org');
+EOS
+
+  echo '
+    port = '${FEDERATION_PORT}'
+    [database]
+    type = "postgres"
+    dsn = "postgres://'${DB_USER}':'${DB_PASSWORD}'@/'${FEDERATION_DB_NAME}'?sslmode=disable"
+
+    [queries]
+    federation = "SELECT id FROM people WHERE name = ? AND domain = ?"
+    reverse-federation = "SELECT name, domain FROM people WHERE id = ?"
+  ' > federation.cfg
+
+  echo "Federation server setup ... OK"
+
+
+}
+
+
 
 echo "Start Stellar Deploy"
 
