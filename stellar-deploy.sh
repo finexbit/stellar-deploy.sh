@@ -13,8 +13,6 @@ set -e
 # - Apache web server
 # - Letsencrypt certbot
 
-# source config file
-. ./stellar-deploy.conf
 
 function system_check {
   echo "Checking system requirements...."
@@ -29,19 +27,23 @@ function system_check {
   echo "Available disk: $available_storage" 
   echo "OS: $dist $dist_version"
   
-  sleep 1
-
   if [ $storage_type != "G" -o $available_storage_size -lt 20 ]
   then
     echo "Minimum of 20G disk space is recommended... Exiting."
     exit 1
   elif [ $dist != "Ubuntu" -a $dist_version != "16.04" ]
   then
-    cat <<-EOF
-      Installation aborted. 
-      Ubuntu 16.04 is required.
-EOF
-        exit 1
+    echo "Installation aborted. Ubuntu 16.04 is required."
+    exit 1
+  fi
+
+  if [ -f ./stellar-deploy.conf ]
+  then
+    # source config file
+    . ./stellar-deploy.conf
+  else
+    echo "Config file: stellar-deploy.conf not found"
+    exit 1
   fi
 }
 
@@ -491,9 +493,6 @@ function setup_supervisor {
    
 }
 
-
-
-
 function setup_apache {
 
   echo "Installing Apache Web server ..."
@@ -577,7 +576,6 @@ function setup_stellar_toml {
   echo "stellar.toml ... OK"
 
 }
-
 
 function setup_ssl {
 
