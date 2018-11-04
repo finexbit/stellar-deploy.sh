@@ -153,6 +153,92 @@ function setup_horizon {
   
 }
 
+function create_testnet_config {
+  sudo echo 'NETWORK_PASSPHRASE="'${TESTNET_PASSHPRASE}'"' >>  /etc/stellar/stellar-core.cfg
+  sudo echo 
+  '
+    KNOWN_PEERS=[
+    "core-testnet1.stellar.org",
+    "core-testnet2.stellar.org",
+    "core-testnet3.stellar.org"]
+    
+    #The public keys of the Stellar testnet servers
+    [QUORUM_SET]
+    THRESHOLD_PERCENT=51 # rounded up -> 2 nodes out of 3
+    VALIDATORS=[
+    "GDKXE2OZMJIPOSLNA6N6F2BVCI3O777I2OOC4BV7VOYUEHYX7RTRYA7Y  sdf1",
+    "GCUCJTIYXSOXKBSNFGNFWW5MUQ54HKRPGJUTQFJ5RQXZXNOLNXYDHRAP  sdf2",
+    "GC2V2EFSXN6SQTWVYA5EPJPBWWIMSD2XQNKUOHGEKB535AQE2I6IXV2Z  sdf3"]
+
+
+    #The history store of the Stellar testnet
+    [HISTORY.h1]
+    get="curl -sf http://s3-eu-west-1.amazonaws.com/history.stellar.org/prd/core-testnet/core_testnet_001/{0} -o {1}"
+
+    [HISTORY.h2]
+    get="curl -sf http://s3-eu-west-1.amazonaws.com/history.stellar.org/prd/core-testnet/core_testnet_002/{0} -o {1}"
+
+    [HISTORY.h3]
+    get="curl -sf http://s3-eu-west-1.amazonaws.com/history.stellar.org/prd/core-testnet/core_testnet_003/{0} -o {1}"
+  ' >> /etc/stellar/stellar-core.cfg
+}
+
+function create_pubnet_config {
+  echo '
+    NETWORK_PASSPHRASE="'${PUBNET_PASSPHRASE}'"
+
+    NODE_NAMES=[
+    "GAOO3LWBC4XF6VWRP5ESJ6IBHAISVJMSBTALHOQM2EZG7Q477UWA6L7U  eno",
+    "GAXP5DW4CVCW2BJNPFGTWCEGZTJKTNWFQQBE5SCWNJIJ54BOHR3WQC3W  moni",
+    "GBFZFQRGOPQC5OEAWO76NOY6LBRLUNH4I5QYPUYAK53QSQWVTQ2D4FT5  dzham",
+    "GDXWQCSKVYAJSUGR2HBYVFVR7NA7YWYSYK3XYKKFO553OQGOHAUP2PX2  jianing",
+    "GCJCSMSPIWKKPR7WEPIQG63PDF7JGGEENRC33OKVBSPUDIRL6ZZ5M7OO  tempo.eu.com",
+    "GCCW4H2DKAC7YYW62H3ZBDRRE5KXRLYLI4T5QOSO6EAMUOE37ICSKKRJ  sparrow_tw",
+    "GD5DJQDDBKGAYNEAXU562HYGOOSYAEOO6AS53PZXBOZGCP5M2OPGMZV3  fuxi.lab",
+    "GBGGNBZVYNMVLCWNQRO7ASU6XX2MRPITAGLASRWOWLB4ZIIPHMGNMC4I  huang.lab",
+    "GDPJ4DPPFEIP2YTSQNOKT7NMLPKU2FFVOEIJMG36RCMBWBUR4GTXLL57  nezha.lab",
+    "GCDLFPQ76D6YUSCUECLKI3AFEVXFWVRY2RZH2YQNYII35FDECWUGV24T  SnT.Lux",
+    "GBAR4OY6T6M4P344IF5II5DNWHVUJU7OLQPSMG2FWVJAFF642BX5E3GB  telindus",
+    # non validating
+    "GCGB2S2KGYARPVIA37HYZXVRM2YZUEXA6S33ZU5BUDC6THSB62LZSTYH  sdf_watcher1",
+    "GCM6QMP3DLRPTAZW2UZPCPX2LF3SXWXKPMP3GKFZBDSF3QZGV2G5QSTK  sdf_watcher2",
+    "GABMKJM6I25XI4K7U6XWMULOUQIQ27BCTMLS6BYYSOWKTBUXVRJSXHYQ  sdf_watcher3",
+    # seem down
+    "GB6REF5GOGGSEHZ3L2YK6K4T4KX3YDMWHDCPMV7MZJDLHBDNZXEPRBGM  donovan",
+    "GBGR22MRCIVW2UZHFXMY5UIBJGPYABPQXQ5GGMNCSUM2KHE3N6CNH6G5  nelisky1",
+    "GA2DE5AQF32LU5OZ5OKAFGPA2DLW4H6JHPGYJUVTNS3W7N2YZCTQFFV6  nelisky2",
+    "GDJ73EX25GGUVMUBCK6DPSTJLYP3IC7I3H2URLXJQ5YP56BW756OUHIG  w00kie",
+    "GAM7A32QZF5PJASRSGVFPAB36WWTHCBHO5CHG3WUFTUQPT7NZX3ONJU4  ptarasov"
+    ]
+
+    KNOWN_PEERS=[
+    "core-live-a.stellar.org:11625",
+    "core-live-b.stellar.org:11625",
+    "core-live-c.stellar.org:11625",
+    "confucius.strllar.org",
+    "stellar1.bitventure.co",
+    "stellar.256kw.com"]
+
+    [QUORUM_SET]
+    VALIDATORS=[
+    "$sdf_watcher1","$eno","$tempo.eu.com","$sdf_watcher2","$sdf_watcher3"
+    ]
+
+    [HISTORY.cache]
+    get="cp /opt/stellar/history-cache/{0} {1}"
+
+    # Stellar.org history store
+    [HISTORY.sdf1]
+    get="curl -sf http://history.stellar.org/prd/core-live/core_live_001/{0} -o {1}"
+
+    [HISTORY.sdf2]
+    get="curl -sf http://history.stellar.org/prd/core-live/core_live_002/{0} -o {1}"
+
+    [HISTORY.sdf3]
+    get="curl -sf http://history.stellar.org/prd/core-live/core_live_003/{0} -o {1}"
+  ' >> /etc/stellar/stellar-core.cfg
+}
+
 
 echo "Start Stellar Deploy"
 
