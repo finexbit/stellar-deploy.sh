@@ -60,6 +60,100 @@ EOF
 }
 
 
+function setup_stellar_core {
+  echo "Installing Stellar Core"
+  echo "Adding the SDF stable repository to your system"
+  # from https://github.com/stellar/packages
+  echo "Download public key: $(wget -qO - https://apt.stellar.org/SDF.asc | sudo apt-key add -)"
+  echo "Saving the repository definition to /etc/apt/sources.list.d/SDF.list: $(echo "deb https://apt.stellar.org/public stable/" | sudo tee -a /etc/apt/sources.list.d/SDF.list)"
+
+  #Do not start automatically
+  ln -s /dev/null /etc/systemd/system/stellar-core.service
+
+  sudo apt-get update && apt-get install stellar-core
+  echo "Stellar Core Installed"
+  echo "Configuring....... "
+  echo "Creating stellar core config "
+  sudo touch ${CORE_CONFIG_FILE}
+  sudo echo "HTTP_PORT=$CORE_PORT" >> ${CORE_CONFIG_FILE}
+  sudo echo "PUBLIC_HTTP_PORT=true" >> ${CORE_CONFIG_FILE}
+  sudo echo 'LOG_FILE_PATH="/var/log/stellar/stellar-core.log"' >> ${CORE_CONFIG_FILE}
+  sudo echo 'BUCKET_DIR_PATH="/var/lib/stellar/buckets"' >> ${CORE_CONFIG_FILE}
+  sudo echo "DATABASE=\"postgresql://dbname=$CORE_DB_NAME user=$DB_USER\"" >> ${CORE_CONFIG_FILE}
+  sudo echo 'UNSAFE_QUORUM=true' >> ${CORE_CONFIG_FILE}
+  sudo echo 'FAILURE_SAFETY=1' >> ${CORE_CONFIG_FILE}
+
+  if [ "$CATCHUP_COMPLETE" == "true" ]
+  then
+    sudo echo 'CATCHUP_COMPLETE=true' >> ${CORE_CONFIG_FILE}
+  else
+    sudo echo 'CATCHUP_COMPLETE=false' >> ${CORE_CONFIG_FILE}
+    sudo echo 'CATCHUP_RECENT=1024' >> ${CORE_CONFIG_FILE}
+  fi
+
+  if [ "$STELLAR_NETWORK" == "testnet" ]
+  then
+    create_testnet_config
+  else
+    create_pubnet_config
+  fi
+
+  echo "Initialise Stellar Core Database"
+  sudo -u ${DB_USER} stellar-core --conf ${CORE_CONFIG_FILE} --newdb
+  
+  echo "Enabling Stellar Core"
+  sudo systemctl enable stellar-core
+  echo "Starting Stellar Core"
+  sudo systemctl start stellar-core 
+
+
+}
+
+function setup_horizon {
+  echo "Installing Horizon Server"
+  sudo apt-get update && apt-get install stellar-horizon
+  echo "Horizon Server Installed"
+  echo "Configuring....... "
+  echo "Creating horizon config "
+  sudo touch ${HORIZON_CONFIG_FILE}
+  sudo echo "## ${HORIZON_CONFIG_FILE}" >> ${HORIZON_CONFIG_FILE}
+  if [ "$STELLAR_NETWORK" == "testnet" ]
+  then
+    sudo echo 'NETWORK_PASSPHRASE="'${TESTNET_PASSPHRASE}'"' >> ${HORIZON_CONFIG_FILE}
+  else
+    sudo echo 'NETWORK_PASSPHRASE="'${PUBNET_PASSPHRASE}'"' >> ${HORIZON_CONFIG_FILE}
+  fi
+  sudo echo "DATABASE_URL=\"dbname=$HORIZON_DB_NAME user=$DB_USER\" host=/var/run/postgresql" >> ${HORIZON_CONFIG_FILE}
+
+  sudo echo "STELLAR_CORE_DATABASE_URL=\"dbname=$HORIZON_DB_NAME user=$DB_USER\" host=/var/run/postgresql" >> ${HORIZON_CONFIG_FILE}
+
+  sudo echo '
+    STELLAR_CORE_URL="http://127.0.0.1:11626"
+    FRIENDBOT_SECRET=
+    PORT='${HORIZON_PORT}'
+    SENTRY_DSN=
+    LOGGLY_TOKEN=
+    PER_HOUR_RATE_LIMIT='${HORIZON_RATE_LIMIT}'
+    INGEST=true
+    # ingestion is currently only supported on 1 Horizon instance
+  ' >> ${HORIZON_CONFIG_FILE}
+
+  if [ "$CATCHUP_COMPLETE" == "true" ]
+  then
+    sudo echo 'HISTORY_RETENTION_COUNT=0' >> ${HORIZON_CONFIG_FILE}  
+  fi
+
+  echo "Initializing Horizon DB"
+  stellar-horizon-cmd db init
+
+  echo "Enable Horizon Server"
+  sudo systemctl enable stellar-horizon
+  # echo "Starting Horizon Server"
+  # sudo systemctl start stellar-horizon
+  
+}
+
+
 echo "Start Stellar Deploy"
 
 system_check
