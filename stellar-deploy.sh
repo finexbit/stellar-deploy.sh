@@ -66,30 +66,35 @@ function setup_stellar_core {
   echo "Adding the SDF stable repository to your system"
   # from https://github.com/stellar/packages
   echo "Download public key: $(wget -qO - https://apt.stellar.org/SDF.asc | sudo apt-key add -)"
+  
+  # to do - check if repository definition is already saved
   echo "Saving the repository definition to /etc/apt/sources.list.d/SDF.list: $(echo "deb https://apt.stellar.org/public stable/" | sudo tee -a /etc/apt/sources.list.d/SDF.list)"
 
+  # to do check if service file already exists
+  
   #Do not start automatically
   sudo ln -s /dev/null /etc/systemd/system/stellar-core.service
 
-  sudo apt-get update && apt-get install stellar-core
+  sudo apt-get update 
+  sudo apt-get install stellar-core
   echo "Stellar Core Installed"
   echo "Configuring....... "
-  echo "Creating stellar core config "
-  sudo touch ${CORE_CONFIG_FILE}
-  sudo echo "HTTP_PORT=$CORE_PORT" >> ${CORE_CONFIG_FILE}
-  sudo echo "PUBLIC_HTTP_PORT=true" >> ${CORE_CONFIG_FILE}
-  sudo echo 'LOG_FILE_PATH="/var/log/stellar/stellar-core.log"' >> ${CORE_CONFIG_FILE}
-  sudo echo 'BUCKET_DIR_PATH="/var/lib/stellar/buckets"' >> ${CORE_CONFIG_FILE}
-  sudo echo "DATABASE=\"postgresql://dbname=$CORE_DB_NAME user=$DB_USER\"" >> ${CORE_CONFIG_FILE}
-  sudo echo 'UNSAFE_QUORUM=true' >> ${CORE_CONFIG_FILE}
-  sudo echo 'FAILURE_SAFETY=1' >> ${CORE_CONFIG_FILE}
+  echo "Creating stellar core config ... "
+  
+  echo "HTTP_PORT=$CORE_PORT
+        PUBLIC_HTTP_PORT=true
+        LOG_FILE_PATH=\"/var/log/stellar/stellar-core.log\"
+        BUCKET_DIR_PATH=\"/var/lib/stellar/buckets\"
+        DATABASE=\"postgresql://dbname=$CORE_DB_NAME user=$DB_USER\"
+        UNSAFE_QUORUM=true
+        FAILURE_SAFETY=1" | sudo tee ${CORE_CONFIG_FILE}
 
   if [ "$CATCHUP_COMPLETE" == "true" ]
   then
-    sudo echo 'CATCHUP_COMPLETE=true' >> ${CORE_CONFIG_FILE}
+    echo 'CATCHUP_COMPLETE=true' | sudo tee -a ${CORE_CONFIG_FILE}
   else
-    sudo echo 'CATCHUP_COMPLETE=false' >> ${CORE_CONFIG_FILE}
-    sudo echo 'CATCHUP_RECENT=1024' >> ${CORE_CONFIG_FILE}
+    echo 'CATCHUP_COMPLETE=false
+          CATCHUP_RECENT=1024' | sudo tee -a ${CORE_CONFIG_FILE}
   fi
 
   if [ "$STELLAR_NETWORK" == "testnet" ]
@@ -99,12 +104,16 @@ function setup_stellar_core {
     create_pubnet_config
   fi
 
-  echo "Initialise Stellar Core Database"
+  # create stellar core db
+  echo "Creating stellar core database ..."
+  sudo -u ${DB_USER} createdb ${CORE_DB_NAME}
+
+  echo "Initialise Stellar Core Database ..."
   sudo -u ${DB_USER} stellar-core --conf ${CORE_CONFIG_FILE} --newdb
   
-  echo "Enabling Stellar Core"
+  echo "Enabling Stellar Core ..."
   sudo systemctl enable stellar-core
-  echo "Starting Stellar Core"
+  echo "Starting Stellar Core ..."
   sudo systemctl start stellar-core 
 
 
@@ -155,9 +164,8 @@ function setup_horizon {
 }
 
 function create_testnet_config {
-  sudo echo 'NETWORK_PASSPHRASE="'${TESTNET_PASSHPRASE}'"' >>  /etc/stellar/stellar-core.cfg
-  sudo echo 
-  '
+  echo '
+    NETWORK_PASSPHRASE="'${TESTNET_PASSHPRASE}'"
     KNOWN_PEERS=[
     "core-testnet1.stellar.org",
     "core-testnet2.stellar.org",
@@ -181,13 +189,12 @@ function create_testnet_config {
 
     [HISTORY.h3]
     get="curl -sf http://s3-eu-west-1.amazonaws.com/history.stellar.org/prd/core-testnet/core_testnet_003/{0} -o {1}"
-  ' >> /etc/stellar/stellar-core.cfg
+  '| sudo tee -a ${CORE_CONFIG_FILE}
 }
 
 function create_pubnet_config {
   echo '
     NETWORK_PASSPHRASE="'${PUBNET_PASSPHRASE}'"
-
     NODE_NAMES=[
     "GAOO3LWBC4XF6VWRP5ESJ6IBHAISVJMSBTALHOQM2EZG7Q477UWA6L7U  eno",
     "GAXP5DW4CVCW2BJNPFGTWCEGZTJKTNWFQQBE5SCWNJIJ54BOHR3WQC3W  moni",
@@ -237,7 +244,7 @@ function create_pubnet_config {
 
     [HISTORY.sdf3]
     get="curl -sf http://history.stellar.org/prd/core-live/core_live_003/{0} -o {1}"
-  ' >> /etc/stellar/stellar-core.cfg
+  ' | sudo tee -a ${CORE_CONFIG_FILE}
 }
 
 function setup_bridge {
@@ -633,7 +640,7 @@ echo "Start Stellar Deploy"
 
 system_check
 # setup_postgresql
-# setup_stellar_core
+ setup_stellar_core
 # setup_horizon
 # setup_bridge
 # setup_compliance
