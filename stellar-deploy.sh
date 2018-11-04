@@ -443,6 +443,53 @@ EOS
 
 }
 
+function setup_supervisor {
+  echo "Installing Supervisor ..."
+  sudo apt-get install supervisor
+  echo "Configuring Supervisor ..."
+  cd /etc/supervisor/conf.d/
+
+  echo "Configure bridge.conf"
+  sudo touch $STELLAR_NETWORK-bridge.conf
+  echo "
+    [program:${STELLAR_NETWORK}_bridge]
+    command=/home/${USER}/stellar/${STELLAR_NETWORK}/bridge/bridge
+    directory=/home/${USER}/stellar/${STELLAR_NETWORK}/bridge
+    user=${USER}
+    stdout_logfile=/home/${USER}/stellar/${STELLAR_NETWORK}/bridge_out.log
+    stderr_logfile=/home/${USER}/stellar/${STELLAR_NETWORK}/bridge_err.log
+  " > $STELLAR_NETWORK-bridge.conf
+
+  echo "Configure compliance.conf"
+  sudo touch $STELLAR_NETWORK-compliance.conf
+  echo "
+    [program:${STELLAR_NETWORK}_compliance]
+    command=/home/${USER}/stellar/${STELLAR_NETWORK}/compliance/compliance
+    directory=/home/${USER}/stellar/${STELLAR_NETWORK}/compliance
+    user=${USER}
+    stdout_logfile=/home/${USER}/stellar/${STELLAR_NETWORK}/compliance/compliance_out.log
+    stderr_logfile=/home/${USER}/stellar/${STELLAR_NETWORK}/compliance/compliance_err.log
+  " > $STELLAR_NETWORK-compliance.conf
+
+
+  echo "Configure federation.conf"
+  sudo touch $STELLAR_NETWORK-federation.conf
+  echo "
+    [program:${STELLAR_NETWORK}_federation]
+    command=/home/${USER}/stellar/${STELLAR_NETWORK}/federation/federation
+    directory=/home/${USER}/stellar/${STELLAR_NETWORK}/federation
+    user=${USER}
+    stdout_logfile=/home/${USER}/stellar/${STELLAR_NETWORK}/federation/federation_out.log
+    stderr_logfile=/home/${USER}/stellar/${STELLAR_NETWORK}/federation/federation_err.log
+  " > $STELLAR_NETWORK-federation.conf
+
+  # TO DO edit main conf and change chmod vim /etc/supervisor/supervisord.conf
+  # do this before starting supervisor
+  # echo "Starting supervisor"
+  # systemctl start supervisor
+  
+   
+}
 
 
 echo "Start Stellar Deploy"
