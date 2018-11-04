@@ -13,7 +13,6 @@ set -e
 # - Apache web server
 # - Letsencrypt certbot
 
-
 function system_check {
   echo "Checking system requirements...."
   sleep 1
@@ -70,7 +69,7 @@ function setup_stellar_core {
   echo "Saving the repository definition to /etc/apt/sources.list.d/SDF.list: $(echo "deb https://apt.stellar.org/public stable/" | sudo tee -a /etc/apt/sources.list.d/SDF.list)"
 
   #Do not start automatically
-  ln -s /dev/null /etc/systemd/system/stellar-core.service
+  sudo ln -s /dev/null /etc/systemd/system/stellar-core.service
 
   sudo apt-get update && apt-get install stellar-core
   echo "Stellar Core Installed"
@@ -117,7 +116,7 @@ function setup_horizon {
   echo "Horizon Server Installed"
   echo "Configuring....... "
   echo "Creating horizon config "
-  sudo touch ${HORIZON_CONFIG_FILE}
+  
   sudo echo "## ${HORIZON_CONFIG_FILE}" >> ${HORIZON_CONFIG_FILE}
   if [ "$STELLAR_NETWORK" == "testnet" ]
   then
@@ -367,8 +366,8 @@ function setup_compliance {
     tx_status = "http://localhost:8010/tx_status"
 
     [tls]
-    certificate_file = "server.crt"
-    private_key_file = "server.key"
+    certificate_file = ""
+    private_key_file = ""
 
     [tx_status_auth]
     username = "username"
@@ -586,17 +585,20 @@ function setup_ssl {
   sudo add-apt-repository ppa:certbot/certbot
   sudo apt-get update
   sudo apt-get install python-certbot-apache 
-  sudo certbot --apache -d $DOMAIN_NAME --dry-run
+  sudo certbot certonly -d ${DOMAIN_NAME} --dry-run
 
   echo "Letsencrypt ... OK"
 
 }
 
 function setup_mock_callback {
-  echo "Setting up mock callbacks"
+  echo "Setting up mock callback endpoints ... "
   cd
-  curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.33.11/install.sh | bash
-  source ~/.bashrc
+  curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.33.11/install.sh | bash ;
+  . ~/.bashrc
+  . ~/.nvm/nvm.sh
+  . ~/.profile
+  
   nvm install --lts
   nvm use node
   npm install -g pm2
